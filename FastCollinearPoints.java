@@ -5,7 +5,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class FastCollinearPoints {
-    private static final int THREE_COLLINEAR_SLOPES = 3;
+    private final static Point NONEXISTENT_POINT = new Point(-1, -1);
+    private static final int FOUR_COLLINEAR_POINTS = 4; // 3 + originPoint = 4
     private List<LineSegment> fourPointStraightLineSegments;
 
     // for each point - sort and transverse
@@ -19,9 +20,7 @@ public class FastCollinearPoints {
         // Throw an IllegalArgumentException if the argument to the constructor is null,
         // if any point in the array is null,
         // or if the argument to the constructor contains a repeated point.
-        if (points == null) {
-            throw new IllegalArgumentException();
-        }
+        throwExceptionIfInvalidPointExists(points);
 
         final int end = points.length;
         for (int start = 0; start < end; start++) {
@@ -30,28 +29,65 @@ public class FastCollinearPoints {
             Arrays.sort(deepCopyOfPoints, originPoint.slopeOrder());
             addCollinearSegments(originPoint, deepCopyOfPoints);
         }
-        System.out.println("FastCollinearPoints: Done analyzing points. Time elasped: " + clock.elapsedTime());
+//        System.out.println("FastCollinearPoints: Done analyzing points. Time elasped: " + clock.elapsedTime());
     }
 
-    private void addCollinearSegments(final Point originPoint, final Point[] pointsSortedBySlopeToOriginPoint) {
-        int consecutiveSameSlopes = 0;
-        double prevSlope = 0.0;
-
-        for (Point endpt : pointsSortedBySlopeToOriginPoint) {
-            final double currentSlope = originPoint.slopeTo(endpt);
-
-            // collinear as previous point
-            if (currentSlope == prevSlope) {
-                if (consecutiveSameSlopes >= THREE_COLLINEAR_SLOPES) {
-                    fourPointStraightLineSegments.add(new LineSegment(originPoint, endpt));
-                }
-                consecutiveSameSlopes++;
-            } else {
-                // Non-collinear point
-                consecutiveSameSlopes = 0;
+    private void throwExceptionIfInvalidPointExists(final Point[] pts) {
+        try {
+            if (pts == null) {
+                throw new IllegalArgumentException();
             }
-            prevSlope = currentSlope;
+            // sort array to check for duplicates.
+            final Point[] copyOfArray = Arrays.copyOf(pts, pts.length);
+            Arrays.sort(copyOfArray, Point::compareTo);
+
+            Point duplicatePointChecker = NONEXISTENT_POINT;
+            for (Point p : copyOfArray) {
+                if (p == null) {
+                    throw new IllegalArgumentException();
+                } else if (p.compareTo(duplicatePointChecker) == 0) {
+                    throw new IllegalArgumentException();
+                }
+            }
+        }  catch (NullPointerException e) {
+            throw new IllegalArgumentException();
         }
+    }
+
+
+    private void addCollinearSegments(final Point originPoint, final Point[] pointsSortedBySlopeToOriginPoint) {
+        Point[] sortedPts = pointsSortedBySlopeToOriginPoint;
+        List<Point> collinearConsecutivePoints = new ArrayList<>();
+
+        for (int i = 1; i < pointsSortedBySlopeToOriginPoint.length; i++) {
+            Point prevPoint = sortedPts[i -1];
+            Point curPoint = sortedPts[i];
+            Double prevSlope = originPoint.slopeTo(prevPoint);
+            Double nextSlope = originPoint.slopeTo(curPoint);
+
+            if (!prevSlope.equals(nextSlope)) {
+                if (collinearConsecutivePoints.size() >= FOUR_COLLINEAR_POINTS) {
+                    fourPointStraightLineSegments.add(getLongestSegment(collinearConsecutivePoints));
+                }
+                // not collinear - reset collinear points
+                collinearConsecutivePoints = new ArrayList<>(Arrays.asList(originPoint));
+            }
+            collinearConsecutivePoints.add(curPoint);
+        }
+
+        // check end
+        if (collinearConsecutivePoints.size() >= FOUR_COLLINEAR_POINTS) {
+            fourPointStraightLineSegments.add(getLongestSegment(collinearConsecutivePoints));
+        }
+
+    }
+
+    private LineSegment getLongestSegment(List<Point> collinearConsecutivePoints) {
+        collinearConsecutivePoints.sort(Point::compareTo);
+        Point startPt = collinearConsecutivePoints.get(0);
+        Point endPt = collinearConsecutivePoints.get(collinearConsecutivePoints.size() - 1);
+        return new LineSegment(startPt, endPt);
+
     }
 
     // the number of line segments
@@ -62,6 +98,5 @@ public class FastCollinearPoints {
     // the line segments
     public LineSegment[] segments() {
         return fourPointStraightLineSegments.toArray(new LineSegment[fourPointStraightLineSegments.size()]);
-
     }
 }

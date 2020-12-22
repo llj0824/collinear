@@ -79,6 +79,9 @@ public class Point implements Comparable<Point> {
      *         argument point
      */
     public int compareTo(Point that) {
+        if (this == null || that == null) {
+            throw new NullPointerException();
+        }
         final int greaterThan = 1;
         final int lessThan = -1;
         final double x0 = this.x;
@@ -122,6 +125,7 @@ public class Point implements Comparable<Point> {
      * Unit tests the Point data type.
      */
     public static void main(String[] args) {
+        Point p0Copy = new Point(0,0);
         Point p0 = new Point(0,0);
         Point p1 = new Point(1,1);
         Point p2 = new Point(1,4);
